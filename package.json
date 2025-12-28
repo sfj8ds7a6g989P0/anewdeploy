@@ -1,0 +1,17 @@
+{
+  "name": "discord-volcano-bot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Discord bot that fetches a URL with User-Agent 'Volcano' and returns the file.",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
