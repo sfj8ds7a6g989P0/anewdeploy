@@ -28,7 +28,7 @@ client.once(Events.ClientReady, (c) => {
     .set([
       {
         name: 'download',
-        description: 'Download Lua from Junkie and send as .lua text',
+        description: 'Download Lua files from Junkie',
         dm_permission: true,
         options: [
           {
