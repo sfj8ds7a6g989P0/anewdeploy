@@ -39,6 +39,11 @@ client.once(Events.ClientReady, (c) => {
           },
         ],
       },
+      {
+        name: 'clear',
+        description: 'Delete my messages in this DM',
+        dm_permission: true,
+      },
     ])
     .catch((e) => console.error('Failed to register commands', e));
 });
@@ -107,24 +112,52 @@ client.on(Events.MessageCreate, async (message) => {
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
     if (!interaction.isChatInputCommand()) return;
-    if (interaction.commandName !== 'download') return;
-    if (interaction.guildId) {
-      await interaction.reply({ content: 'This command works only in DMs.', ephemeral: true });
+    if (interaction.commandName === 'download') {
+      if (interaction.guildId) {
+        await interaction.reply({ content: 'This command works only in DMs.', ephemeral: true });
+        return;
+      }
+      const urlStr = interaction.options.getString('url', true);
+      const urlObj = extractJunkieUrl(urlStr);
+      if (!urlObj) {
+        await interaction.reply('Only URLs from api.junkie-development.de are allowed.');
+        return;
+      }
+      await interaction.deferReply();
+      const result = await handleDownload(urlObj);
+      if (result.error) {
+        await interaction.editReply(result.error);
+        return;
+      }
+      await interaction.editReply({ content: 'Here is your Lua script.', files: [result.attachment] });
       return;
     }
-    const urlStr = interaction.options.getString('url', true);
-    const urlObj = extractJunkieUrl(urlStr);
-    if (!urlObj) {
-      await interaction.reply('Only URLs from api.junkie-development.de are allowed.');
+    if (interaction.commandName === 'clear') {
+      if (interaction.guildId) {
+        await interaction.reply({ content: 'This command works only in DMs.', ephemeral: true });
+        return;
+      }
+      await interaction.deferReply();
+      const channel = interaction.channel;
+      const meId = interaction.client.user.id;
+      let total = 0;
+      let before;
+      for (;;) {
+        const fetched = await channel.messages.fetch({ limit: 100, ...(before ? { before } : {}) });
+        if (fetched.size === 0) break;
+        before = fetched.last()?.id;
+        const mine = fetched.filter((m) => m.author.id === meId);
+        for (const m of mine.values()) {
+          try {
+            await m.delete();
+            total += 1;
+          } catch (_) {}
+        }
+        if (fetched.size < 100) break;
+      }
+      await interaction.editReply(`Deleted ${total} messages I sent in this DM.`);
       return;
     }
-    await interaction.deferReply();
-    const result = await handleDownload(urlObj);
-    if (result.error) {
-      await interaction.editReply(result.error);
-      return;
-    }
-    await interaction.editReply({ content: 'Here is your Lua script.', files: [result.attachment] });
   } catch (err) {
     console.error(err);
     if (interaction.deferred || interaction.replied) {
